@@ -30,28 +30,48 @@ public class AiController {
 	 ResponseStructure<byte[]> responsedStructure;
 
 	
-	@Value("${openAI.system.message}")
-	private String systemMessage;
-	
-	@PostMapping("/aichat")
-	public ResponseEntity<ResponseStructure<String>> aiChat(@RequestParam(name = "userMessage") String userMessage)
-	{
-		  if (userMessage == null || userMessage.isEmpty()) {
-	            // Handle the case where userMessage is empty or null
-	            responseStructure.setStatus("Error");
-	            responseStructure.setMessage("Missing or Inorrect Parameter");
-	            responseStructure.setCode(HttpStatus.BAD_REQUEST.value());
-	            responseStructure.setData(null);
-	            return ResponseEntity.badRequest().body(responseStructure);
+//	@Value("${openAI.system.message}")
+//	private String systemMessage;
+//	
+//	@PostMapping("/aichat")
+//	public ResponseEntity<ResponseStructure<String>> aiChat(@RequestParam(name = "userMessage") String userMessage)
+//	{
+//		  if (userMessage == null || userMessage.isEmpty()) {
+//	            // Handle the case where userMessage is empty or null
+//	            responseStructure.setStatus("Error");
+//	            responseStructure.setMessage("Missing or Inorrect Parameter");
+//	            responseStructure.setCode(HttpStatus.BAD_REQUEST.value());
+//	            responseStructure.setData(null);
+//	            return ResponseEntity.badRequest().body(responseStructure);
+//	        }
+//	        
+//		return aiService.aiChat(userMessage,systemMessage);
+//	}
+	 
+	 //GEMINI AI TEXT GENERATION
+	 @PostMapping("/aitext")
+	    public ResponseEntity<ResponseStructure<String>> generateContent(@RequestParam(value = "userMessage", required = false) String userMessage) {
+	        if (userMessage == null || userMessage.isEmpty()) {
+	            return ResponseEntity.badRequest().body(aiService.handleEmptyOrNullRequest());
 	        }
-	        
-		return aiService.aiChat(userMessage,systemMessage);
-	}
+
+	        try {
+	            ResponseStructure<String> responseStructure = aiService.generateContent(userMessage);
+
+	            if (responseStructure == null) {
+	                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(aiService.handleExceededLimits());
+	            }
+
+	            return ResponseEntity.ok(responseStructure);
+	        } catch (Exception e) {
+	            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(aiService.handleEmptyGeneratedContent());
+	        }
+	    }
 	
 
 
 	@PostMapping("/generate-image")
-	public ResponseEntity<Object> generateImage(@RequestParam(name="textPromt") String textPrompt) {
+	public ResponseEntity<Object> generateImage(@RequestParam(name="textPrompt") String textPrompt) {
 	    try {
 	        if (textPrompt == null || textPrompt.isEmpty()) {
 	            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -61,7 +81,7 @@ public class AiController {
 	        }
 	        byte[] imageData = aiService.generateImage(textPrompt);
 	        HttpHeaders headers = new HttpHeaders();
-	        headers.setContentType(MediaType.IMAGE_PNG);
+	        headers.setContentType(MediaType.IMAGE_PNG);  
 	        return new ResponseEntity<>(imageData, headers, HttpStatus.OK);
 	    } catch (RuntimeException e) {
 	        // Simplified error response for other runtime exceptions
